@@ -4,6 +4,7 @@ import { X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api.js';
 import { ServicioSearchSelect, RepuestoSearchSelect } from './SearchSelect.jsx';
+import { useAuthStore } from '../../store/authStore.js';
 
 // ─── API ──────────────────────────────────────────────────────────
 const extApi = {
@@ -105,30 +106,12 @@ function ModalCrearCliente({ nombreInicial, onClose, onCreado }) {
         </div>
         <form onSubmit={handleSubmit}>
           <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 14px' }}>
-            <div>
-              <label className="cot-label">Nombres *</label>
-              <input className="cot-input" value={form.nombres} onChange={e=>set('nombres',e.target.value)} required/>
-            </div>
-            <div>
-              <label className="cot-label">Apellidos *</label>
-              <input className="cot-input" value={form.apellidos} onChange={e=>set('apellidos',e.target.value)} required/>
-            </div>
-            <div>
-              <label className="cot-label">DNI/RUC</label>
-              <input className="cot-input" value={form.dniRuc} onChange={e=>set('dniRuc',e.target.value)}/>
-            </div>
-            <div>
-              <label className="cot-label">Teléfono</label>
-              <input className="cot-input" value={form.telefono} onChange={e=>set('telefono',e.target.value)}/>
-            </div>
-            <div>
-              <label className="cot-label">Correo</label>
-              <input className="cot-input" value={form.email} onChange={e=>set('email',e.target.value)}/>
-            </div>
-            <div>
-              <label className="cot-label">Dirección</label>
-              <input className="cot-input" value={form.direccion} onChange={e=>set('direccion',e.target.value)}/>
-            </div>
+            <div><label className="cot-label">Nombres *</label><input className="cot-input" value={form.nombres} onChange={e=>set('nombres',e.target.value)} required/></div>
+            <div><label className="cot-label">Apellidos *</label><input className="cot-input" value={form.apellidos} onChange={e=>set('apellidos',e.target.value)} required/></div>
+            <div><label className="cot-label">DNI/RUC</label><input className="cot-input" value={form.dniRuc} onChange={e=>set('dniRuc',e.target.value)}/></div>
+            <div><label className="cot-label">Teléfono</label><input className="cot-input" value={form.telefono} onChange={e=>set('telefono',e.target.value)}/></div>
+            <div><label className="cot-label">Correo</label><input className="cot-input" value={form.email} onChange={e=>set('email',e.target.value)}/></div>
+            <div><label className="cot-label">Dirección</label><input className="cot-input" value={form.direccion} onChange={e=>set('direccion',e.target.value)}/></div>
           </div>
           <div style={{ padding:'12px 20px', borderTop:'1px solid #f1f5f9', display:'flex', gap:8, justifyContent:'flex-end' }}>
             <button type="button" onClick={onClose} style={{ padding:'8px 16px', borderRadius:8, border:'1px solid #e5e7eb', background:'#fff', cursor:'pointer', fontSize:13, color:'#64748b' }}>Cancelar</button>
@@ -245,6 +228,7 @@ function ResumenHeader({ form, clienteObj, vehiculoObj, serviciosTipo }) {
 
 // ─── Modal principal ──────────────────────────────────────────────
 export default function NuevaCotizacionModal({ onClose, onSaved, initialData = null, otId = null }) {
+  const { user } = useAuthStore();
   const qc = useQueryClient();
   const [step, setStep]              = useState(1);
   const [stepsUnlocked, setUnlocked] = useState(initialData ? 3 : 1);
@@ -256,7 +240,8 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
     if (!initialData) return {
       clienteId:'', facturarA:'', direccion:'', dniRuc:'',
       correo:'', celular:'', contacto:'', celular2:'',
-      asesor:'', metodoPago:'EFECTIVO',
+      asesor: user?.nombre || '',
+      metodoPago:'EFECTIVO',
       fechaApertura: new Date().toLocaleString('es-PE'),
       tieneMantenimiento:false, tieneCorrectivo:false, km1:'',
       vehiculoId:'', placa:'', marca:'', modelo:'', anio:'',
@@ -274,7 +259,7 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
       celular:            initialData.telefono     || '',
       contacto:           initialData.contacto     || '',
       celular2:           initialData.telefono2    || '',
-      asesor:             initialData.asesor       || '',
+      asesor:             initialData.asesor       || user?.nombre || '',
       metodoPago:         initialData.metodoPago   || 'EFECTIVO',
       fechaApertura:      new Date().toLocaleString('es-PE'),
       tieneMantenimiento: t.includes('Mantenimiento'),
@@ -313,8 +298,8 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
       .filter(i => i.tipo === 'repuesto')
       .map(i => ({ id: i.repuestoId || i.refId || i.id, nombre: i.descripcion, cantidad: i.cantidad || 1, precio: Number(i.precioUnit) }));
   });
-  const [descSvc,  setDescSvc]  = useState(initialData?.descuentoSvc ? String(initialData.descuentoSvc) : '');
-  const [descRep,  setDescRep]  = useState(initialData?.descuentoRep ? String(initialData.descuentoRep) : '');
+  const [descSvc, setDescSvc] = useState(initialData?.descuentoSvc ? String(initialData.descuentoSvc) : '');
+  const [descRep, setDescRep] = useState(initialData?.descuentoRep ? String(initialData.descuentoRep) : '');
 
   const { data: clientes  = [] } = useQuery({ queryKey:['cli-all'],   queryFn: extApi.clientes  });
   const { data: vehiculos = [] } = useQuery({ queryKey:['veh-all'],   queryFn: extApi.vehiculos });
@@ -342,6 +327,8 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
     setSvcItems(p => [...p, { id: item.id, nombre: item.nombre, precio, tipo }]);
   };
   const removeSvc = idx => setSvcItems(p => p.filter((_, i) => i !== idx));
+  // ← NUEVO: editar precio de servicio
+  const setSvcPrecio = (idx, val) => setSvcItems(p => p.map((x, i) => i === idx ? { ...x, precio: Number(val) || 0 } : x));
 
   const addRep = rep => {
     setRepItems(p => {
@@ -352,6 +339,8 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
   };
   const removeRep = idx => setRepItems(p => p.filter((_, i) => i !== idx));
   const setCant   = (idx, v) => setRepItems(p => p.map((r, i) => i === idx ? { ...r, cantidad: Math.max(1, +v||1) } : r));
+  // ← NUEVO: editar precio de repuesto
+  const setRepPrecio = (idx, val) => setRepItems(p => p.map((x, i) => i === idx ? { ...x, precio: Number(val) || 0 } : x));
 
   const goTo2 = () => {
     if (!form.clienteId && !form.facturarA) { toast.error('Ingresa el propietario'); return; }
@@ -500,7 +489,6 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
           {step === 1 && (
             <div style={{ padding:'16px' }} className="cot-tab1-grid">
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-
                 <div className="cot-card">
                   <h3>Datos del Cliente</h3>
                   <div className="cot-grid2">
@@ -511,42 +499,15 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                         onClear={() => set('clienteId','')}
                         onNuevo={nombre => setNuevoCliente(nombre)} />
                     </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Facturar á:</label>
-                      <input className="cot-input" value={form.facturarA} onChange={e=>set('facturarA',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Direccion</label>
-                      <input className="cot-input" value={form.direccion} onChange={e=>set('direccion',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">RUC/DNI</label>
-                      <input className="cot-input" value={form.dniRuc} onChange={e=>set('dniRuc',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Correo</label>
-                      <input className="cot-input" value={form.correo} onChange={e=>set('correo',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Telefono</label>
-                      <input className="cot-input" value={form.celular} onChange={e=>set('celular',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Contacto</label>
-                      <input className="cot-input" value={form.contacto} onChange={e=>set('contacto',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Telefono 2</label>
-                      <input className="cot-input" value={form.celular2} onChange={e=>set('celular2',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Asesor</label>
-                      <input className="cot-input" value={form.asesor} onChange={e=>set('asesor',e.target.value)}/>
-                    </div>
-                    <div className="cot-field">
-                      <label className="cot-label">Fecha/Hora de apertura:</label>
-                      <input className="cot-input" value={form.fechaApertura} readOnly/>
-                    </div>
+                    <div className="cot-field"><label className="cot-label">Facturar á:</label><input className="cot-input" value={form.facturarA} onChange={e=>set('facturarA',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Direccion</label><input className="cot-input" value={form.direccion} onChange={e=>set('direccion',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">RUC/DNI</label><input className="cot-input" value={form.dniRuc} onChange={e=>set('dniRuc',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Correo</label><input className="cot-input" value={form.correo} onChange={e=>set('correo',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Telefono</label><input className="cot-input" value={form.celular} onChange={e=>set('celular',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Contacto</label><input className="cot-input" value={form.contacto} onChange={e=>set('contacto',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Telefono 2</label><input className="cot-input" value={form.celular2} onChange={e=>set('celular2',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Asesor</label><input className="cot-input" value={form.asesor} onChange={e=>set('asesor',e.target.value)}/></div>
+                    <div className="cot-field"><label className="cot-label">Fecha/Hora de apertura:</label><input className="cot-input" value={form.fechaApertura} readOnly/></div>
                     <div className="cot-field" style={{ gridColumn:'1/-1' }}>
                       <label className="cot-label">Método de Pago</label>
                       <select className="cot-input" value={form.metodoPago} onChange={e=>set('metodoPago',e.target.value)}>
@@ -562,10 +523,7 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                     {['Mantenimiento','Correctivo'].map(tipo => {
                       const key = tipo==='Mantenimiento'?'tieneMantenimiento':'tieneCorrectivo';
                       return (
-                        <button key={tipo} className={`svc-btn ${form[key]?'active':''}`}
-                          onClick={()=>set(key,!form[key])}>
-                          {tipo}
-                        </button>
+                        <button key={tipo} className={`svc-btn ${form[key]?'active':''}`} onClick={()=>set(key,!form[key])}>{tipo}</button>
                       );
                     })}
                   </div>
@@ -579,46 +537,16 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
               <div className="cot-card" style={{ height:'100%', boxSizing:'border-box' }}>
                 <h3>Datos del auto</h3>
                 <div className="cot-grid2">
-                  <div className="cot-field">
-                    <label className="cot-label">Placa</label>
-                    <input className="cot-input" value={form.placa} onChange={e=>set('placa',e.target.value.toUpperCase())} maxLength={8}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Marca</label>
-                    <input className="cot-input" value={form.marca} onChange={e=>set('marca',e.target.value)}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Modelo</label>
-                    <input className="cot-input" value={form.modelo} onChange={e=>set('modelo',e.target.value)}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Año</label>
-                    <input className="cot-input" type="number" value={form.anio} onChange={e=>set('anio',e.target.value)}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Color</label>
-                    <input className="cot-input" value={form.color} onChange={e=>set('color',e.target.value)}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Motor</label>
-                    <input className="cot-input" value={form.motor} onChange={e=>set('motor',e.target.value)}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Chasis</label>
-                    <input className="cot-input" value={form.chasis} onChange={e=>set('chasis',e.target.value.toUpperCase())}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Km.</label>
-                    <input className="cot-input" type="number" value={form.km2} onChange={e=>set('km2',e.target.value)}/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Fecha</label>
-                    <input className="cot-input" value={new Date().toLocaleDateString('es-PE')} readOnly/>
-                  </div>
-                  <div className="cot-field">
-                    <label className="cot-label">Tipo de Orden</label>
-                    <input className="cot-input" value={serviciosTipo.join(', ')} readOnly/>
-                  </div>
+                  <div className="cot-field"><label className="cot-label">Placa</label><input className="cot-input" value={form.placa} onChange={e=>set('placa',e.target.value.toUpperCase())} maxLength={8}/></div>
+                  <div className="cot-field"><label className="cot-label">Marca</label><input className="cot-input" value={form.marca} onChange={e=>set('marca',e.target.value)}/></div>
+                  <div className="cot-field"><label className="cot-label">Modelo</label><input className="cot-input" value={form.modelo} onChange={e=>set('modelo',e.target.value)}/></div>
+                  <div className="cot-field"><label className="cot-label">Año</label><input className="cot-input" type="number" value={form.anio} onChange={e=>set('anio',e.target.value)}/></div>
+                  <div className="cot-field"><label className="cot-label">Color</label><input className="cot-input" value={form.color} onChange={e=>set('color',e.target.value)}/></div>
+                  <div className="cot-field"><label className="cot-label">Motor</label><input className="cot-input" value={form.motor} onChange={e=>set('motor',e.target.value)}/></div>
+                  <div className="cot-field"><label className="cot-label">Chasis</label><input className="cot-input" value={form.chasis} onChange={e=>set('chasis',e.target.value.toUpperCase())}/></div>
+                  <div className="cot-field"><label className="cot-label">Km.</label><input className="cot-input" type="number" value={form.km2} onChange={e=>set('km2',e.target.value)}/></div>
+                  <div className="cot-field"><label className="cot-label">Fecha</label><input className="cot-input" value={new Date().toLocaleDateString('es-PE')} readOnly/></div>
+                  <div className="cot-field"><label className="cot-label">Tipo de Orden</label><input className="cot-input" value={serviciosTipo.join(', ')} readOnly/></div>
                   <div className="cot-field" style={{ gridColumn:'1/-1' }}>
                     <label className="cot-label">Técnico</label>
                     <select className="cot-input" value={form.mecanicoId} onChange={e=>set('mecanicoId',e.target.value)}>
@@ -647,7 +575,7 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
               <ResumenHeader form={form} clienteObj={clienteObj} vehiculoObj={vehiculoObj} serviciosTipo={serviciosTipo} />
 
               <div className="cot-tab2-grid">
-                {/* Servicios */}
+                {/* ── Servicios ── */}
                 <div className="cot-tab2-svc">
                   <ServicioSearchSelect
                     servicios={servicios} terceros={terceros}
@@ -657,23 +585,31 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                   />
                   <div style={{ fontSize:14, fontWeight:700, color:'#1e293b', marginBottom:8 }}>Servicio</div>
 
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 60px 80px 24px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', padding:'6px 8px', borderRadius:'6px 6px 0 0' }}>
+                  {/* Header columnas */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 50px 90px 24px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', padding:'6px 8px', borderRadius:'6px 6px 0 0' }}>
                     <span style={{ fontSize:11, fontWeight:600, color:'#64748b' }}>Nombre</span>
-                    <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textAlign:'center' }}>Cantidad</span>
-                    <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textAlign:'right' }}>Precio</span>
+                    <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textAlign:'center' }}>Cant.</span>
+                    <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textAlign:'right' }}>Precio (S/)</span>
                     <span></span>
                   </div>
 
                   <div style={{ minHeight:180 }}>
-                    {svcItems.map((item,i) => (
-                      <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 60px 80px 24px', alignItems:'center', padding:'6px 8px', borderBottom:'1px solid #f8fafc', fontSize:13 }}>
-                        <span style={{ color: item.tipo==='tercero'?'#7c3aed':'#1d4ed8' }}>
+                    {svcItems.map((item, i) => (
+                      <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 50px 90px 24px', alignItems:'center', padding:'5px 8px', borderBottom:'1px solid #f8fafc', fontSize:13, gap:4 }}>
+                        <span style={{ color: item.tipo==='tercero'?'#7c3aed':'#1d4ed8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                           {item.tipo!=='tercero' && <span style={{ color:'#94a3b8' }}>— </span>}
                           {item.nombre}
                         </span>
-                        <span style={{ textAlign:'center', color:'#64748b' }}>1</span>
-                        <span style={{ textAlign:'right', fontWeight:600 }}>{fmt(item.precio)}</span>
-                        <button onClick={()=>removeSvc(i)} style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:16, lineHeight:1, padding:0, textAlign:'center' }}>×</button>
+                        <span style={{ textAlign:'center', color:'#64748b', fontSize:12 }}>1</span>
+                        {/* ← Precio editable */}
+                        <input
+                          type="number" min="0" step="0.01"
+                          value={item.precio}
+                          onChange={e => setSvcPrecio(i, e.target.value)}
+                          className="cot-input"
+                          style={{ padding:'3px 6px', fontSize:12, fontWeight:600, textAlign:'right' }}
+                        />
+                        <button onClick={() => removeSvc(i)} style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:16, lineHeight:1, padding:0, textAlign:'center' }}>×</button>
                       </div>
                     ))}
                     {!svcItems.length && <div style={{ color:'#cbd5e1', fontSize:12, paddingTop:32, textAlign:'center' }}>Sin servicios</div>}
@@ -687,7 +623,7 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                   </div>
                 </div>
 
-                {/* Repuestos */}
+                {/* ── Repuestos ── */}
                 <div className="cot-tab2-rep">
                   <RepuestoSearchSelect
                     repuestos={repuestos}
@@ -700,28 +636,39 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                       <thead>
                         <tr style={{ background:'#f8fafc' }}>
                           <th style={{ padding:'6px 8px', textAlign:'left', fontWeight:600, color:'#64748b', borderBottom:'1px solid #e5e7eb' }}>Producto</th>
-                          <th style={{ padding:'6px 8px', textAlign:'center', fontWeight:600, color:'#64748b', borderBottom:'1px solid #e5e7eb' }}>Cantidad</th>
-                          <th style={{ padding:'6px 8px', textAlign:'right', fontWeight:600, color:'#64748b', borderBottom:'1px solid #e5e7eb' }}>Precio</th>
+                          <th style={{ padding:'6px 8px', textAlign:'center', fontWeight:600, color:'#64748b', borderBottom:'1px solid #e5e7eb', width:80 }}>Cant.</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right', fontWeight:600, color:'#64748b', borderBottom:'1px solid #e5e7eb', width:100 }}>P/U (S/)</th>
+                          <th style={{ padding:'6px 8px', textAlign:'right', fontWeight:600, color:'#64748b', borderBottom:'1px solid #e5e7eb', width:80 }}>Total</th>
                           <th style={{ width:24, borderBottom:'1px solid #e5e7eb' }}></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {repItems.map((item,i) => (
+                        {repItems.map((item, i) => (
                           <tr key={i} style={{ borderBottom:'1px solid #f8fafc' }}>
-                            <td style={{ padding:'7px 8px', fontSize:13 }}>{item.nombre}</td>
-                            <td style={{ padding:'7px 8px', textAlign:'center' }}>
-                              <div style={{ display:'flex', alignItems:'center', gap:4, justifyContent:'center' }}>
-                                <input className="cot-input" style={{ width:48, textAlign:'center', padding:'3px 4px' }} type="number" min="1" value={item.cantidad} onChange={e=>setCant(i,e.target.value)}/>
-                                <span style={{ fontSize:11, color:'#94a3b8' }}>ud.</span>
-                              </div>
+                            <td style={{ padding:'6px 8px', fontSize:13 }}>{item.nombre}</td>
+                            <td style={{ padding:'6px 8px', textAlign:'center' }}>
+                              <input className="cot-input" style={{ width:48, textAlign:'center', padding:'3px 4px' }} type="number" min="1" value={item.cantidad} onChange={e=>setCant(i,e.target.value)}/>
                             </td>
-                            <td style={{ padding:'7px 8px', textAlign:'right', fontWeight:600 }}>{fmt(item.precio*item.cantidad)}</td>
-                            <td style={{ padding:'7px 4px', textAlign:'center' }}>
-                              <button onClick={()=>removeRep(i)} style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:16 }}>×</button>
+                            {/* ← Precio unitario editable */}
+                            <td style={{ padding:'6px 8px', textAlign:'right' }}>
+                              <input
+                                type="number" min="0" step="0.01"
+                                value={item.precio}
+                                onChange={e => setRepPrecio(i, e.target.value)}
+                                className="cot-input"
+                                style={{ width:80, textAlign:'right', padding:'3px 6px', fontSize:12, fontWeight:600 }}
+                              />
+                            </td>
+                            {/* Total calculado */}
+                            <td style={{ padding:'6px 8px', textAlign:'right', fontWeight:700, color:'#1e293b', whiteSpace:'nowrap' }}>
+                              {fmt(item.precio * item.cantidad)}
+                            </td>
+                            <td style={{ padding:'6px 4px', textAlign:'center' }}>
+                              <button onClick={() => removeRep(i)} style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', fontSize:16 }}>×</button>
                             </td>
                           </tr>
                         ))}
-                        {!repItems.length && <tr><td colSpan={4} style={{ padding:'28px 0', textAlign:'center', color:'#cbd5e1', fontSize:12 }}>Sin repuestos</td></tr>}
+                        {!repItems.length && <tr><td colSpan={5} style={{ padding:'28px 0', textAlign:'center', color:'#cbd5e1', fontSize:12 }}>Sin repuestos</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -750,7 +697,7 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:13, minWidth:400 }}>
                   <thead>
                     <tr style={{ background:'#f8fafc', borderBottom:'1px solid #e5e7eb' }}>
-                      {['Nº Orden','Nombre','cantidad','Descripción','Precio'].map(h=>(
+                      {['Nº Orden','Nombre','Cant.','Descripción','Precio'].map(h=>(
                         <th key={h} style={{ padding:'10px 14px', textAlign: h==='Precio'?'right':'left', fontSize:12, fontWeight:600, color:'#64748b' }}>{h}</th>
                       ))}
                     </tr>
