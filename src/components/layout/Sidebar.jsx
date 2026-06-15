@@ -4,6 +4,7 @@ import {
   Package, CreditCard, FileText, Activity, Building2,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore.js';
+import { useState, useEffect } from 'react';
 
 const CSS = `
   .nav-item {
@@ -131,6 +132,20 @@ export default function Sidebar({ colapsado, esMovil, abierto, onCerrar }) {
     </>
   );
 
+  const [logoSrc, setLogoSrc] = useState('');
+
+  useEffect(() => {
+    fetch('/logo_pdf.png')
+      .then(r => r.blob())
+      .then(blob => new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      }))
+      .then(setLogoSrc)
+      .catch(() => {});
+  }, []);
+
   return (
     <>
       <style>{CSS}</style>
@@ -147,16 +162,19 @@ export default function Sidebar({ colapsado, esMovil, abierto, onCerrar }) {
       }}>
 
         <div style={{ ...S.header, justifyContent: colapsado ? 'center' : 'flex-start' }}>
-          <div style={S.logoWrap}>
-            <Wrench size={17} color="#2563EB" />
-          </div>
-          {!colapsado && (
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={S.brandName}>Automotriz CyC</div>
-              <div style={S.brandSub}>Gestión de taller</div>
-            </div>
-          )}
+        <div style={{ ...S.logoWrap, background: logoSrc ? '#fff' : '#EFF6FF', overflow: 'hidden' }}>
+          {logoSrc
+            ? <img src={logoSrc} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 3 }} />
+            : <Wrench size={17} color="#2563EB" />
+          }
         </div>
+        {!colapsado && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={S.brandName}>Automotriz CyC</div>
+            <div style={S.brandSub}>Gestión de taller</div>
+          </div>
+        )}
+      </div>
 
         <nav style={S.nav}>
           {section('Operaciones', NAV_OPERACIONES)}

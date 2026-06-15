@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Loader2, Wrench } from 'lucide-react';
 import { login } from '../services/auth.service.js';
@@ -51,6 +51,20 @@ export default function Login() {
   const inp  = { ...inputBase, padding: '10px 14px',          border: `1px solid ${error ? '#FECACA' : '#C8DAEA'}`, background: error ? '#FFF5F5' : '#F4F8FC' };
   const inpP = { ...inputBase, padding: '10px 40px 10px 14px', border: `1px solid ${error ? '#FECACA' : '#C8DAEA'}`, background: error ? '#FFF5F5' : '#F4F8FC' };
 
+  const [logoSrc, setLogoSrc] = useState('');
+
+    useEffect(() => {
+      fetch('/logo_pdf.png')
+        .then(r => r.blob())
+        .then(blob => new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        }))
+        .then(setLogoSrc)
+        .catch(() => {});
+    }, []);
+
   return (
     <div style={{
       minHeight: '100vh', background: '#F4F8FC',
@@ -62,12 +76,16 @@ export default function Login() {
         {/* Logo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32 }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 16, marginBottom: 14,
+            width: 80, height: 80, borderRadius: 16, marginBottom: 14,
             background: '#fff', border: '1px solid #C8DAEA',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(30,58,138,0.1)',
+            overflow: 'hidden',
           }}>
-            <Wrench size={28} color="#1E3A8A" />
+            {logoSrc
+              ? <img src={logoSrc} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
+              : <Wrench size={28} color="#1E3A8A" />
+            }
           </div>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0D1B2A', margin: 0 }}>Automotriz C&C</h1>
           <p style={{ fontSize: 12, color: '#5A7A9A', marginTop: 4 }}>Sistema de gestión de taller</p>
