@@ -24,7 +24,7 @@ async function consultarDni(dni) {
 async function consultarRuc(ruc) {
   return api.get(`/reniec/ruc/${ruc}`).then(r => r.data);
 }
-// ─── CSS ──────────────────────────────────────────────────────────
+// ─── CSS (Modal) ──────────────────────────────────────────────────
 const CSS = `
   .cl-overlay {
     position: fixed; inset: 0; z-index: 9999;
@@ -134,6 +134,37 @@ const CSS = `
     .cl-modal-header { padding: 16px 18px 12px; }
     .cl-modal-body   { padding: 14px 18px; }
     .cl-modal-footer { padding: 12px 18px; }
+  }
+`;
+
+// ─── CSS (Lista) ──────────────────────────────────────────────────
+// Mismo patrón usado en OrdenesTrabajo / Cotizaciones: breakpoint único
+// a 768px, tabla → cards, header y buscador con flex-wrap.
+const LIST_CSS = `
+  .cl-list-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .cl-list-search { position: relative; flex: 1; min-width: 200px; }
+
+  .cl-list-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  .cl-list-cards { display: none; flex-direction: column; gap: 10px; padding: 4px 0 0; }
+  .cl-list-card {
+    background: #fff; border: 1px solid #F1F5F9; border-radius: 14px;
+    padding: 14px 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .cl-list-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .cl-list-card-name { font-size: 14px; font-weight: 700; color: #0D1B2A; margin-bottom: 2px; }
+  .cl-list-card-dni {
+    font-family: monospace; font-size: 12px; font-weight: 700; color: #2563EB;
+    background: #EFF6FF; padding: 2px 8px; border-radius: 6px; flex-shrink: 0;
+  }
+  .cl-list-card-mid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-bottom: 10px; }
+  .cl-list-card-label { font-size: 10px; color: #94A3B8; margin-bottom: 1px; }
+  .cl-list-card-value { font-size: 12px; font-weight: 600; color: #0D1B2A; word-break: break-word; }
+  .cl-list-card-actions { display: flex; gap: 8px; justify-content: flex-end; border-top: 1px solid #F8FAFC; padding-top: 10px; }
+
+  @media (max-width: 915px) {
+    .cl-list-table-wrap { display: none; }
+    .cl-list-cards { display: flex; }
   }
 `;
 
@@ -328,6 +359,44 @@ function ClienteForm({ cliente, onClose }) {
   return createPortal(modal, document.body);
 }
 
+// ─── Card individual de Cliente (móvil) ───────────────────────────
+function ClienteCard({ c, onEdit, onDelete }) {
+  return (
+    <div className="cl-list-card">
+      <div className="cl-list-card-top">
+        <div>
+          <div className="cl-list-card-name">{c.nombres} {c.apellidos}</div>
+          <span className="cl-list-card-dni">{c.dniRuc}</span>
+        </div>
+      </div>
+
+      <div className="cl-list-card-mid">
+        <div>
+          <div className="cl-list-card-label">Teléfono</div>
+          <div className="cl-list-card-value">{c.telefono || '—'}</div>
+        </div>
+        <div>
+          <div className="cl-list-card-label">Email</div>
+          <div className="cl-list-card-value">{c.email || '—'}</div>
+        </div>
+        <div>
+          <div className="cl-list-card-label">Registro</div>
+          <div className="cl-list-card-value">{formatDate(c.fechaRegistro)}</div>
+        </div>
+      </div>
+
+      <div className="cl-list-card-actions">
+        <button className="btn btn-secondary btn-sm" onClick={() => onEdit(c)}>
+          <Pencil size={14} />
+        </button>
+        <button className="btn btn-danger btn-sm" onClick={() => onDelete(c.id)}>
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Lista ────────────────────────────────────────────────────────
 export default function ClientesList() {
   const [search, setSearch] = useState('');
@@ -348,7 +417,9 @@ export default function ClientesList() {
 
   return (
     <div>
-      <div className="page-header">
+      <style>{LIST_CSS}</style>
+
+      <div className="page-header cl-list-header">
         <h2 className="page-title">Clientes</h2>
         <button className="btn btn-primary" onClick={() => setModal({})}>
           <Plus size={16} /> Nuevo cliente
@@ -357,7 +428,7 @@ export default function ClientesList() {
 
       <div className="card">
         <div className="search-bar">
-          <div style={{ position: 'relative' }}>
+          <div className="cl-list-search">
             <Search size={16} style={{ position: 'absolute', left: 10, top: 10, color: '#94a3b8' }} />
             <input className="input" style={{ paddingLeft: 34 }}
               placeholder="Buscar por nombre o DNI..."
@@ -368,40 +439,51 @@ export default function ClientesList() {
         {isLoading
           ? <div style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Cargando...</div>
           : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>DNI/RUC</th><th>Nombre</th><th>Teléfono</th>
-                    <th>Email</th><th>Registro</th><th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data?.data?.map(c => (
-                    <tr key={c.id}>
-                      <td><strong>{c.dniRuc}</strong></td>
-                      <td>{c.nombres} {c.apellidos}</td>
-                      <td>{c.telefono || '—'}</td>
-                      <td>{c.email    || '—'}</td>
-                      <td>{formatDate(c.fechaRegistro)}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => setModal(c)}>
-                            <Pencil size={14} />
-                          </button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="table-wrap cl-list-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>DNI/RUC</th><th>Nombre</th><th>Teléfono</th>
+                      <th>Email</th><th>Registro</th><th>Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!data?.data?.length && (
-                <div className="empty-state"><p>No se encontraron clientes</p></div>
-              )}
-            </div>
+                  </thead>
+                  <tbody>
+                    {data?.data?.map(c => (
+                      <tr key={c.id}>
+                        <td><strong>{c.dniRuc}</strong></td>
+                        <td>{c.nombres} {c.apellidos}</td>
+                        <td>{c.telefono || '—'}</td>
+                        <td>{c.email    || '—'}</td>
+                        <td>{formatDate(c.fechaRegistro)}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => setModal(c)}>
+                              <Pencil size={14} />
+                            </button>
+                            <button className="btn btn-danger btn-sm" onClick={() => handleDelete(c.id)}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {!data?.data?.length && (
+                  <div className="empty-state"><p>No se encontraron clientes</p></div>
+                )}
+              </div>
+
+              <div className="cl-list-cards">
+                {data?.data?.map(c => (
+                  <ClienteCard key={c.id} c={c} onEdit={setModal} onDelete={handleDelete} />
+                ))}
+                {!data?.data?.length && (
+                  <div className="empty-state"><p>No se encontraron clientes</p></div>
+                )}
+              </div>
+            </>
           )
         }
       </div>

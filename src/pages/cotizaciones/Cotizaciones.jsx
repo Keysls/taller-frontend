@@ -34,7 +34,6 @@ const ov  = { position:'fixed',inset:0,zIndex:200,background:'rgba(15,23,42,0.4)
 const iS  = { width:'100%',padding:'9px 12px',borderRadius:10,border:'1px solid #C8DAEA',background:'#F4F8FC',fontSize:13,color:'#0D1B2A',outline:'none',boxSizing:'border-box' };
 const lS  = { display:'block',fontSize:11,fontWeight:600,color:'#4A6A8A',marginBottom:5,textTransform:'uppercase',letterSpacing:'0.05em' };
 const fg  = { marginBottom:14 };
-const r2  = { display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14 };
 const BP  = { padding:'10px 18px',borderRadius:10,border:'none',cursor:'pointer',background:'#2563EB',color:'#fff',fontSize:13,fontWeight:600,display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6 };
 const BC  = { padding:'10px 18px',borderRadius:10,cursor:'pointer',background:'#F1F5F9',color:'#64748B',fontSize:13,fontWeight:500,border:'none' };
 const focus = e => e.target.style.borderColor='#2563EB';
@@ -46,6 +45,48 @@ const ESTADO_CFG = {
   RECHAZADA: { bg:'#FEF2F2',color:'#DC2626' },
 };
 const METODOS_PAGO = ['EFECTIVO','TRANSFERENCIA','TARJETA','YAPE','PLIN'];
+
+// ─── CSS Responsivo ───────────────────────────────────────────────
+// Mismo patrón que OrdenesTrabajo: breakpoint único a 768px, tabla → cards,
+// panel lateral fullscreen en móvil, grids de 2 columnas → 1 columna.
+const CSS_RESPONSIVE = `
+  .cot-filtros { display:flex; gap:10px; flex-wrap:wrap; }
+  .cot-filtro-search { position:relative; flex:1; min-width:200px; }
+  .cot-tabla-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .cot-col-hide-sm { display:table-cell; }
+  .cot-table-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+  .cot-panel { width:500px !important; }
+  .cot-panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 24px; }
+
+  .cot-modal-grid-2    { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .cot-modal-grid-2-lg { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+
+  .cot-cards { display:none; padding:12px; gap:10px; flex-direction:column; }
+  .cot-card {
+    background:#fff; border-radius:14px; border:1px solid #F1F5F9;
+    box-shadow:0 1px 4px rgba(0,0,0,0.06); padding:14px 16px; cursor:pointer;
+  }
+  .cot-card-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .cot-card-mid { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin-bottom:10px; }
+  .cot-card-bot { display:flex; justify-content:space-between; align-items:center; }
+  .cot-card-label { font-size:10px; color:#94A3B8; margin-bottom:1px; }
+  .cot-card-value { font-size:12px; font-weight:600; color:#0D1B2A; }
+
+  @media (max-width:768px) {
+    .cot-col-hide-sm { display:none !important; }
+    .cot-tabla-wrap { display:none; }
+    .cot-cards { display:flex; }
+
+    .cot-panel { width:100vw !important; }
+    .cot-panel-grid { grid-template-columns:1fr; gap:0; }
+
+    .cot-modal-grid-2,
+    .cot-modal-grid-2-lg { grid-template-columns:1fr; gap:14px; }
+
+    .cot-pagination { padding:10px 12px !important; }
+  }
+`;
 
 // ─── PDF Print ────────────────────────────────────────────────────
 function imprimirCotizacion(cot) {
@@ -297,7 +338,7 @@ function ModalEjecutarOT({ cotizacion, onClose, onDone }) {
         <div style={{padding:'12px 20px 0',display:'flex',justifyContent:'flex-end',flexShrink:0}}>
           <button onClick={onClose} style={{background:'none',border:'none',cursor:'pointer',color:'#94A3B8'}}><X size={18}/></button>
         </div>
-        <div style={{display:'flex',justifyContent:'center',borderBottom:'1px solid #E2ECF4',flexShrink:0}}>
+        <div style={{display:'flex',justifyContent:'center',borderBottom:'1px solid #E2ECF4',flexShrink:0,flexWrap:'wrap'}}>
           {tabs.map((t,i)=>{
             const active = step===i+1;
             return (
@@ -310,7 +351,7 @@ function ModalEjecutarOT({ cotizacion, onClose, onDone }) {
         </div>
         <div style={{flex:1,overflowY:'auto'}}>
           {step===1 && (
-            <div style={{padding:'20px 24px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:24}}>
+            <div className="cot-modal-grid-2-lg" style={{padding:'20px 24px'}}>
               <div>
                 <div style={{fontSize:13,fontWeight:700,color:'#0D1B2A',marginBottom:12,paddingBottom:8,borderBottom:'1px solid #F1F5F9'}}>Datos del Cliente</div>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -401,7 +442,7 @@ function ModalVerCotizacion({ id, onClose, onEjecutar }) {
   return (
     <>
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(15,23,42,0.3)',backdropFilter:'blur(2px)'}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{position:'absolute',top:0,right:0,bottom:0,width:500,background:'#F4F8FC',boxShadow:'-8px 0 40px rgba(15,23,42,0.15)',display:'flex',flexDirection:'column',animation:'slideIn .25s ease'}}>
+      <div className="cot-panel" style={{position:'absolute',top:0,right:0,bottom:0,background:'#F4F8FC',boxShadow:'-8px 0 40px rgba(15,23,42,0.15)',display:'flex',flexDirection:'column',animation:'slideIn .25s ease'}}>
 
         <div style={{padding:'16px 20px',background:'#fff',borderBottom:'1px solid #E2ECF4',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <div style={{flex:1,textAlign:'center'}}>
@@ -413,7 +454,7 @@ function ModalVerCotizacion({ id, onClose, onEjecutar }) {
 
         <div style={{flex:1,overflowY:'auto'}}>
           <div style={{background:'#fff',margin:'12px 14px',borderRadius:14,border:'1px solid #E2ECF4',padding:'16px 18px'}}>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0 24px'}}>
+            <div className="cot-panel-grid">
               <div>
                 <div style={{fontSize:12,fontWeight:700,color:'#0D1B2A',marginBottom:10}}>Cliente</div>
                 <InfoRow label="Señor:" value={`${cot?.cliente?.nombres||''} ${cot?.cliente?.apellidos||''}`} bold />
@@ -531,7 +572,7 @@ function ModalNuevaCotizacion({ onClose, onSaved }) {
         <div style={{padding:'20px 24px',borderBottom:'1px solid #F1F5F9',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <div>
             <h2 style={{fontSize:15,fontWeight:700,color:'#0D1B2A',margin:0}}>Nueva cotización</h2>
-            <div style={{display:'flex',gap:6,marginTop:6}}>
+            <div style={{display:'flex',gap:6,marginTop:6,flexWrap:'wrap'}}>
               {['Información','Ítems'].map((s,i)=>(<span key={s} style={{fontSize:11,fontWeight:600,padding:'2px 10px',borderRadius:20,background:step===i+1?'#2563EB':'#F1F5F9',color:step===i+1?'#fff':'#94A3B8'}}>{i+1}. {s}</span>))}
             </div>
           </div>
@@ -540,11 +581,11 @@ function ModalNuevaCotizacion({ onClose, onSaved }) {
         <div style={{overflowY:'auto',flex:1,padding:'20px 24px'}}>
           {step===1 && (
             <>
-              <div style={r2}>
+              <div className="cot-modal-grid-2" style={{marginBottom:14}}>
                 <div><label style={lS}>Cliente *</label><select style={iS} value={form.clienteId} onChange={e=>{set('clienteId',e.target.value);set('vehiculoId','');}} onFocus={focus} onBlur={blur}><option value="">Seleccionar...</option>{clientes.map(c=><option key={c.id} value={c.id}>{c.nombres} {c.apellidos} — {c.dniRuc}</option>)}</select></div>
                 <div><label style={lS}>Vehículo *</label><select style={iS} value={form.vehiculoId} onChange={e=>set('vehiculoId',e.target.value)} onFocus={focus} onBlur={blur} disabled={!form.clienteId}><option value="">Seleccionar...</option>{vehCliente.map(v=><option key={v.id} value={v.id}>{v.placa} — {v.marca} {v.modelo}</option>)}</select></div>
               </div>
-              <div style={r2}>
+              <div className="cot-modal-grid-2" style={{marginBottom:14}}>
                 <div><label style={lS}>Método de pago</label><select style={iS} value={form.metodoPago} onChange={e=>set('metodoPago',e.target.value)} onFocus={focus} onBlur={blur}>{METODOS_PAGO.map(m=><option key={m} value={m}>{m}</option>)}</select></div>
                 <div><label style={lS}>Motor</label><input style={iS} value={form.motor} onChange={e=>set('motor',e.target.value)} placeholder="ej: 2.0L" onFocus={focus} onBlur={blur}/></div>
               </div>
@@ -558,8 +599,10 @@ function ModalNuevaCotizacion({ onClose, onSaved }) {
               <div style={{marginBottom:16}}><div style={{fontSize:11,fontWeight:700,color:'#6D28D9',textTransform:'uppercase',letterSpacing:'.05em',marginBottom:8}}>Servicios de terceros</div><select style={{...iS,marginBottom:8}} defaultValue="" onChange={e=>{const s=terceros.find(x=>x.id===e.target.value);if(s){addItem('tercero',s);e.target.value='';}}} onFocus={focus} onBlur={blur}><option value="">+ Agregar servicio externo...</option>{terceros.filter(s=>s.activo).map(s=><option key={s.id} value={s.id}>{s.nombre} — {fmt(s.precio)}</option>)}</select></div>
               {items.length>0 && (
                 <div style={{borderRadius:12,border:'1px solid #F1F5F9',overflow:'hidden',marginBottom:12}}>
-                  <table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr style={{background:'#F8FAFC'}}>{['Tipo','Descripción','Cant.','Precio',''].map(h=>(<th key={h} style={{padding:'8px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94A3B8',textTransform:'uppercase'}}>{h}</th>))}</tr></thead>
-                  <tbody>{items.map((item,i)=>(<tr key={i} style={{borderBottom:'1px solid #F8FAFC'}}><td style={{padding:'8px 12px'}}><span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20,background:item.tipo==='repuesto'?'#FFF7ED':item.tipo==='servicio'?'#EFF6FF':'#F5F3FF',color:item.tipo==='repuesto'?'#C2410C':item.tipo==='servicio'?'#1D4ED8':'#6D28D9'}}>{item.tipo}</span></td><td style={{padding:'8px 12px',fontSize:13,color:'#0D1B2A'}}>{item.descripcion}</td><td style={{padding:'8px 12px',fontSize:12,color:'#64748B'}}>{item.cantidad}</td><td style={{padding:'8px 12px',fontSize:13,fontWeight:600}}>{fmt(item.subtotal||item.precioUnit)}</td><td style={{padding:'8px 12px'}}><button onClick={()=>removeItem(i)} style={{background:'none',border:'none',cursor:'pointer',color:'#DC2626',padding:2}}><X size={14}/></button></td></tr>))}</tbody></table>
+                  <div className="cot-table-scroll">
+                    <table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr style={{background:'#F8FAFC'}}>{['Tipo','Descripción','Cant.','Precio',''].map(h=>(<th key={h} style={{padding:'8px 12px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94A3B8',textTransform:'uppercase'}}>{h}</th>))}</tr></thead>
+                    <tbody>{items.map((item,i)=>(<tr key={i} style={{borderBottom:'1px solid #F8FAFC'}}><td style={{padding:'8px 12px'}}><span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:20,background:item.tipo==='repuesto'?'#FFF7ED':item.tipo==='servicio'?'#EFF6FF':'#F5F3FF',color:item.tipo==='repuesto'?'#C2410C':item.tipo==='servicio'?'#1D4ED8':'#6D28D9'}}>{item.tipo}</span></td><td style={{padding:'8px 12px',fontSize:13,color:'#0D1B2A'}}>{item.descripcion}</td><td style={{padding:'8px 12px',fontSize:12,color:'#64748B'}}>{item.cantidad}</td><td style={{padding:'8px 12px',fontSize:13,fontWeight:600}}>{fmt(item.subtotal||item.precioUnit)}</td><td style={{padding:'8px 12px'}}><button onClick={()=>removeItem(i)} style={{background:'none',border:'none',cursor:'pointer',color:'#DC2626',padding:2}}><X size={14}/></button></td></tr>))}</tbody></table>
+                  </div>
                   <div style={{padding:'10px 14px',background:'#F8FAFC',display:'flex',justifyContent:'flex-end',gap:8,alignItems:'center'}}><span style={{fontSize:12,color:'#64748B'}}>Total:</span><span style={{fontSize:16,fontWeight:800,color:'#0D1B2A'}}>{fmt(total)}</span></div>
                 </div>
               )}
@@ -571,6 +614,50 @@ function ModalNuevaCotizacion({ onClose, onSaved }) {
           <button style={BC} onClick={()=>step===1?onClose():setStep(1)}>{step===1?'Cancelar':'← Atrás'}</button>
           {step===1?<button style={BP} onClick={()=>{if(!form.clienteId||!form.vehiculoId){toast.error('Selecciona cliente y vehículo');return;}setStep(2);}}>Siguiente →</button>:<button style={BP} onClick={handleSubmit} disabled={loading}>{loading&&<Loader2 size={14} style={{animation:'spin 1s linear infinite'}}/>}{loading?'Guardando…':'Crear cotización'}</button>}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Card individual de Cotización (móvil) ────────────────────────
+function CotCard({ c, onClick }) {
+  const est = ESTADO_CFG[c.estado] || ESTADO_CFG.PENDIENTE;
+  const cliente = `${c.cliente?.nombres||''} ${c.cliente?.apellidos||''}`.trim() || '—';
+  const placa = c.placa || c.vehiculo?.placa || '—';
+
+  return (
+    <div className="cot-card" onClick={onClick}>
+      <div className="cot-card-top">
+        <span style={{ fontFamily:'monospace', fontSize:13, fontWeight:700, color:'#2563EB', background:'#EFF6FF', padding:'3px 10px', borderRadius:6 }}>{c.numeroCot}</span>
+        <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:20, background:est.bg, color:est.color }}>{c.estado}</span>
+      </div>
+
+      <div style={{ marginBottom:10 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'#0D1B2A', marginBottom:2 }}>{cliente}</div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          <span style={{ fontSize:12, fontWeight:700, background:'#F1F5F9', color:'#334155', padding:'1px 8px', borderRadius:5 }}>{placa}</span>
+          {c.mecanico?.nombre && <span style={{ fontSize:11, color:'#94A3B8' }}>· {c.mecanico.nombre}</span>}
+          <span style={{ fontSize:11, color:'#94A3B8' }}>· {fmtD(c.creadoEn)}</span>
+        </div>
+      </div>
+
+      <div className="cot-card-mid">
+        <div>
+          <div className="cot-card-label">DNI/RUC</div>
+          <div className="cot-card-value">{c.cliente?.dniRuc || '—'}</div>
+        </div>
+        <div>
+          <div className="cot-card-label">Total</div>
+          <div className="cot-card-value">{fmt(c.total)}</div>
+        </div>
+      </div>
+
+      <div className="cot-card-bot">
+        <span style={{ fontSize:11, color:'#94A3B8' }}>Toca para ver detalle</span>
+        <button onClick={e=>{ e.stopPropagation(); onClick(); }}
+          style={{ width:34, height:34, borderRadius:8, border:'1px solid #E2ECF4', background:'#EFF6FF', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'#2563EB' }}>
+          <Eye size={14}/>
+        </button>
       </div>
     </div>
   );
@@ -603,6 +690,8 @@ export default function Cotizaciones() {
 
   return (
     <div>
+      <style>{CSS_RESPONSIVE}</style>
+
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
         <div><p style={{fontSize:12,color:'#94A3B8',marginTop:2}}>{filtradas.length} de {cotizaciones.length} cotizaciones</p></div>
         <button onClick={()=>setModal({tipo:'nueva'})} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'9px 16px',borderRadius:10,border:'none',cursor:'pointer',background:'#2563EB',color:'#fff',fontSize:13,fontWeight:600}} onMouseEnter={e=>e.currentTarget.style.background='#1D4ED8'} onMouseLeave={e=>e.currentTarget.style.background='#2563EB'}>
@@ -611,8 +700,8 @@ export default function Cotizaciones() {
       </div>
 
       <div style={{background:'#fff',borderRadius:16,border:'1px solid #F1F5F9',boxShadow:'0 1px 4px rgba(0,0,0,0.05)',overflow:'hidden'}}>
-        <div style={{padding:'14px 16px',borderBottom:'1px solid #F1F5F9',display:'flex',gap:10}}>
-          <div style={{position:'relative',flex:1}}>
+        <div className="cot-filtros" style={{padding:'14px 16px',borderBottom:'1px solid #F1F5F9'}}>
+          <div className="cot-filtro-search">
             <Search size={14} style={{position:'absolute',left:11,top:'50%',transform:'translateY(-50%)',color:'#94A3B8',pointerEvents:'none'}}/>
             <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Buscar por código, cliente, DNI o placa..." style={{...iS,paddingLeft:32,background:'#F8FAFC'}} onFocus={focus} onBlur={blur}/>
           </div>
@@ -623,22 +712,38 @@ export default function Cotizaciones() {
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',padding:64,color:'#94A3B8',gap:8}}><Loader2 size={18} style={{animation:'spin 1s linear infinite'}}/> Cargando…</div>
         ) : (
           <>
-            <div style={{overflowX:'auto'}}>
+            <div className="cot-tabla-wrap">
               <table style={{width:'100%',borderCollapse:'collapse'}}>
-                <thead><tr style={{background:'#F8FAFC',borderBottom:'1px solid #F1F5F9'}}>{['Código','DNI/RUC','Cliente','Técnico','Placa','Estado','Total','Fecha',''].map(h=>(<th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'.05em',whiteSpace:'nowrap'}}>{h}</th>))}</tr></thead>
+                <thead>
+                  <tr style={{background:'#F8FAFC',borderBottom:'1px solid #F1F5F9'}}>
+                    {[
+                      { label:'Código',  hide:false },
+                      { label:'DNI/RUC', hide:true  },
+                      { label:'Cliente', hide:false },
+                      { label:'Técnico', hide:true  },
+                      { label:'Placa',   hide:false },
+                      { label:'Estado',  hide:false },
+                      { label:'Total',   hide:false },
+                      { label:'Fecha',   hide:true  },
+                      { label:'',        hide:false },
+                    ].map(h => (
+                      <th key={h.label} className={h.hide ? 'cot-col-hide-sm' : ''} style={{padding:'10px 14px',textAlign:'left',fontSize:10,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',letterSpacing:'.05em',whiteSpace:'nowrap'}}>{h.label}</th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
                   {paginated.map(c=>{
                     const estCfg = ESTADO_CFG[c.estado]||ESTADO_CFG.PENDIENTE;
                     return (
                       <tr key={c.id} style={{borderBottom:'1px solid #F8FAFC',cursor:'pointer'}} onMouseEnter={e=>e.currentTarget.style.background='#FAFBFF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'} onClick={()=>setModal({tipo:'ver',id:c.id})}>
                         <td style={{padding:'11px 14px'}}><span style={{fontFamily:'monospace',fontSize:12,fontWeight:700,color:'#2563EB',background:'#EFF6FF',padding:'2px 8px',borderRadius:6}}>{c.numeroCot}</span></td>
-                        <td style={{padding:'11px 14px',fontSize:12,color:'#64748B'}}>{c.cliente?.dniRuc||'—'}</td>
+                        <td className="cot-col-hide-sm" style={{padding:'11px 14px',fontSize:12,color:'#64748B'}}>{c.cliente?.dniRuc||'—'}</td>
                         <td style={{padding:'11px 14px',fontSize:13,fontWeight:600,color:'#0D1B2A',whiteSpace:'nowrap'}}>{c.cliente?.nombres} {c.cliente?.apellidos}</td>
-                        <td style={{padding:'11px 14px',fontSize:12,color:'#64748B'}}>{c.mecanico?.nombre||'—'}</td>
+                        <td className="cot-col-hide-sm" style={{padding:'11px 14px',fontSize:12,color:'#64748B'}}>{c.mecanico?.nombre||'—'}</td>
                         <td style={{padding:'11px 14px'}}>{(c.placa||c.vehiculo?.placa)?<span style={{fontSize:12,fontWeight:700,background:'#F1F5F9',color:'#334155',padding:'2px 8px',borderRadius:6}}>{c.placa||c.vehiculo?.placa}</span>:<span style={{color:'#CBD5E1',fontSize:12}}>—</span>}</td>
                         <td style={{padding:'11px 14px'}}><span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,...estCfg}}>{c.estado}</span></td>
                         <td style={{padding:'11px 14px',fontSize:13,fontWeight:700,color:'#0D1B2A'}}>{fmt(c.total)}</td>
-                        <td style={{padding:'11px 14px',fontSize:11,color:'#94A3B8'}}>{fmtD(c.creadoEn)}</td>
+                        <td className="cot-col-hide-sm" style={{padding:'11px 14px',fontSize:11,color:'#94A3B8'}}>{fmtD(c.creadoEn)}</td>
                         <td style={{padding:'11px 14px'}}><button onClick={e=>{e.stopPropagation();setModal({tipo:'ver',id:c.id});}} style={{width:30,height:30,borderRadius:8,border:'1px solid #E2ECF4',background:'#fff',cursor:'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',color:'#64748B'}} onMouseEnter={e=>{e.currentTarget.style.background='#EFF6FF';e.currentTarget.style.color='#2563EB';e.currentTarget.style.borderColor='#BFDBFE';}} onMouseLeave={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.color='#64748B';e.currentTarget.style.borderColor='#E2ECF4';}}><Eye size={13}/></button></td>
                       </tr>
                     );
@@ -647,8 +752,20 @@ export default function Cotizaciones() {
                 </tbody>
               </table>
             </div>
+
+            <div className="cot-cards">
+              {paginated.map(c => (
+                <CotCard key={c.id} c={c} onClick={() => setModal({tipo:'ver', id:c.id})} />
+              ))}
+              {!paginated.length && (
+                <div style={{ textAlign:'center', padding:48, color:'#94A3B8', fontSize:13 }}>
+                  {search ? 'Sin resultados' : 'No hay cotizaciones registradas'}
+                </div>
+              )}
+            </div>
+
             {totalPages>1&&(
-              <div style={{padding:'12px 16px',borderTop:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div className="cot-pagination" style={{padding:'12px 16px',borderTop:'1px solid #F1F5F9',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <span style={{fontSize:12,color:'#94A3B8'}}>Mostrando {(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE,filtradas.length)} de {filtradas.length}</span>
                 <div style={{display:'flex',gap:6,alignItems:'center'}}>
                   <button onClick={()=>setPage(p=>Math.max(1,p-1))} disabled={page===1} style={{width:32,height:32,borderRadius:8,border:'1px solid #E2ECF4',background:'#fff',cursor:page===1?'not-allowed':'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',color:'#64748B',opacity:page===1?.4:1}}><ChevronLeft size={15}/></button>

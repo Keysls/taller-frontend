@@ -9,11 +9,11 @@ import MecanicosList from '../pages/mecanicos/MecanicosList.jsx';
 import OrdenesTrabajo from '../pages/ordenes/OrdenesTrabajo.jsx';
 import RepuestosList from '../pages/inventario/RepuestosList.jsx';
 import Usuarios from '../pages/configuracion/Usuarios.jsx';
+import Auditoria from '../pages/configuracion/Auditoria.jsx';
 import ServiciosPropios  from '../pages/inventario/ServiciosPropios.jsx';
 import ServiciosTerceros from '../pages/inventario/ServiciosTerceros.jsx';
 import Cotizaciones from '../pages/cotizaciones/Cotizaciones.jsx';
 import Pagos from '../pages/pagos/Pagos.jsx';
-
 export default function AppRoutes() {
   return (
     <Routes>
@@ -28,6 +28,7 @@ export default function AppRoutes() {
           <Route path="/ordenes"                  element={<OrdenesTrabajo />} />
           <Route path="/inventario"               element={<RepuestosList />} />
           <Route path="/configuracion/usuarios"   element={<Usuarios />} />
+          <Route path="/configuracion/auditoria"  element={<Auditoria />} />
           <Route path="/inventario/servicios"     element={<ServiciosPropios />} />
           <Route path="/inventario/terceros"      element={<ServiciosTerceros />} />
           <Route path="/cotizaciones"             element={<Cotizaciones />} />
