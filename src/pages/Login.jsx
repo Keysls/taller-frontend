@@ -108,7 +108,7 @@ export default function Login() {
               </label>
               <input
                 type="email" value={email} onChange={handleEmailChange}
-                placeholder="admin@taller.com" autoComplete="email" required
+                placeholder="admin@automotrizcyc.com" autoComplete="email" required
                 style={inp}
                 onFocus={e => e.target.style.borderColor = error ? '#F87171' : '#1E3A8A'}
                 onBlur={e  => e.target.style.borderColor = error ? '#FECACA' : '#C8DAEA'}

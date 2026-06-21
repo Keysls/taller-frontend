@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Search, X, Loader2, ChevronLeft, ChevronRight,
-  Eye, Printer, DollarSign, AlertTriangle, Wrench, Pencil, MessageCircle,
+  Eye, Printer, DollarSign, AlertTriangle, Wrench, Pencil, MessageCircle, Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api.js';
@@ -99,6 +99,34 @@ function imprimirOrden(ot) {
   setTimeout(() => w.print(), 500);
 }
 
+// ─── Descargar PDF directo desde backend ─────────────────────────
+async function descargarOrden(ot) {
+  try {
+    // Leer token del storage de Zustand persist (clave: 'taller-auth')
+    const stored = JSON.parse(localStorage.getItem('taller-auth') || '{}');
+    const token  = stored?.state?.token;
+
+    const res = await fetch(`/api/ordenes/${ot.id}/pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Error al generar PDF');
+
+    const blob   = await res.blob();
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    const placa  = (ot.placa || ot.vehiculo?.placa || 'SIN-PLACA').replace(/[^a-zA-Z0-9]/g, '-');
+    const numero = (ot.numeroOrden || 'OT').replace(/[^a-zA-Z0-9]/g, '-');
+    a.href       = url;
+    a.download   = `${numero}_${placa}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    toast.error('Error al descargar PDF');
+  }
+}
+
 // ─── Abrir WhatsApp ───────────────────────────────────────────────
 function abrirWhatsapp(ot) {
   const tel = ot?.telefono || ot?.vehiculo?.cliente?.telefono || '';
@@ -139,6 +167,7 @@ function PanelOT({ id, onClose, onModificar }) {
   const [estadoEdit, setEstadoEdit] = useState(false);
   const [cotizacionOpen, setCotizacionOpen] = useState(true);
   const [showPago, setShowPago] = useState(false);
+  const [descargando, setDescargando] = useState(false);
   const { data: ot, isLoading } = useQuery({ queryKey:['orden',id], queryFn:()=>ordApi.getById(id) });
 
   const handleEstado = async (estado) => {
@@ -149,6 +178,12 @@ function PanelOT({ id, onClose, onModificar }) {
       toast.success('Estado actualizado');
       setEstadoEdit(false);
     } catch { toast.error('Error al cambiar estado'); }
+  };
+
+  const handleDescargar = async () => {
+    setDescargando(true);
+    await descargarOrden(ot);
+    setDescargando(false);
   };
 
   if(isLoading) return (
@@ -274,7 +309,6 @@ function PanelOT({ id, onClose, onModificar }) {
                     ))}
                   </div>
                 )}
-                {/* Pagos registrados */}
                 {ot?.pagos?.length > 0 && (
                   <div style={{ marginTop:14 }}>
                     <div style={{ fontSize:12, fontWeight:700, color:'#15803D', marginBottom:8 }}>Pagos</div>
@@ -286,7 +320,6 @@ function PanelOT({ id, onClose, onModificar }) {
                     ))}
                   </div>
                 )}
-                {/* Saldo pendiente */}
                 {saldo > 0 && (
                   <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', marginTop:8, borderTop:'1px solid #F1F5F9', fontSize:13, color:'#DC2626' }}>
                     <span>Saldo pendiente</span>
@@ -309,7 +342,6 @@ function PanelOT({ id, onClose, onModificar }) {
             </div>
           </div>
           <div style={{ padding:'12px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            {/* Iconos izquierda */}
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={()=>imprimirOrden(ot)}
                 style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}
@@ -317,6 +349,16 @@ function PanelOT({ id, onClose, onModificar }) {
                 onMouseLeave={e=>e.currentTarget.style.background='#fff'}
                 title="Imprimir OT">
                 <Printer size={16}/>
+              </button>
+              <button onClick={handleDescargar} disabled={descargando}
+                style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:descargando?'wait':'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563EB', opacity:descargando?.6:1 }}
+                onMouseEnter={e=>{ if(!descargando) e.currentTarget.style.background='#EFF6FF'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
+                title="Descargar PDF">
+                {descargando
+                  ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/>
+                  : <Download size={16}/>
+                }
               </button>
               <button onClick={()=>abrirWhatsapp(ot)}
                 style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#25D366' }}
@@ -326,7 +368,6 @@ function PanelOT({ id, onClose, onModificar }) {
                 <MessageCircle size={16}/>
               </button>
             </div>
-            {/* Botones derecha */}
             <div style={{ display:'flex', gap:8, alignItems:'center' }}>
               {saldo > 0 && (
                 <button onClick={()=>setShowPago(true)}
@@ -348,7 +389,6 @@ function PanelOT({ id, onClose, onModificar }) {
       </div>
     </div>
 
-    {/* Modal Pago */}
     {showPago && ot && (
       <ModalPago
         orden={ot}
@@ -552,7 +592,6 @@ export default function OrdenesTrabajo() {
     <div>
       <style>{CSS_RESPONSIVE}</style>
 
-      {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div>
           <p style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>{filtradas.length} de {ordenes.length} órdenes</p>
@@ -565,7 +604,6 @@ export default function OrdenesTrabajo() {
         </button>
       </div>
 
-      {/* KPIs */}
       <div className="ot-kpis">
         {[
           { label:'Total',      value:kpis.total,     color:'#2563EB', bg:'#EFF6FF' },
@@ -580,10 +618,8 @@ export default function OrdenesTrabajo() {
         ))}
       </div>
 
-      {/* Contenedor */}
       <div style={{ background:'#fff', borderRadius:16, border:'1px solid #F1F5F9', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', overflow:'hidden' }}>
 
-        {/* Filtros */}
         <div style={{ padding:'14px 16px', borderBottom:'1px solid #F1F5F9' }} className="ot-filtros">
           <div className="ot-filtro-search">
             <Search size={14} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94A3B8', pointerEvents:'none' }}/>
@@ -610,7 +646,6 @@ export default function OrdenesTrabajo() {
           </div>
         ) : (
           <>
-            {/* Tabla desktop */}
             <div className="ot-tabla-wrap">
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
@@ -689,7 +724,6 @@ export default function OrdenesTrabajo() {
               </table>
             </div>
 
-            {/* Cards móvil */}
             <div className="ot-cards">
               {paginated.map(o => (
                 <OTCard key={o.id} o={o} onClick={() => setPanelId(o.id)} />
@@ -701,7 +735,6 @@ export default function OrdenesTrabajo() {
               )}
             </div>
 
-            {/* Paginación */}
             {totalPages > 1 && (
               <div className="ot-pagination" style={{ padding:'12px 16px', borderTop:'1px solid #F1F5F9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'#94A3B8' }}>Mostrando {(page-1)*PER_PAGE+1}–{Math.min(page*PER_PAGE,filtradas.length)} de {filtradas.length}</span>
