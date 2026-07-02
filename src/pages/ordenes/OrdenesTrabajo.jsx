@@ -113,7 +113,7 @@ async function descargarOrden(ot) {
       responseType: 'blob',
     });
 
-    const blob = res.data;
+    const blob   = res.data;
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement('a');
     const placa  = (ot.placa || ot.vehiculo?.placa || 'SIN-PLACA').replace(/[^a-zA-Z0-9]/g, '-');
