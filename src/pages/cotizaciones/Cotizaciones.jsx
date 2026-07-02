@@ -263,18 +263,14 @@ ${tablaSeccion('Repuestos / Insumos', cot.repuestosItems, totalRep, Number(cot.d
 }
 
 // ─── Descargar PDF directo desde backend ─────────────────────────
+// DESPUÉS
 async function descargarCotizacion(cot) {
   try {
-    // Leer token del storage de Zustand persist (clave: 'taller-auth')
-    const stored = JSON.parse(localStorage.getItem('taller-auth') || '{}');
-    const token  = stored?.state?.token;
-
-    const res = await fetch(`/api/cotizaciones/${cot.id}/pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await api.get(`/cotizaciones/${cot.id}/pdf`, {
+      responseType: 'blob',
     });
-    if (!res.ok) throw new Error('Error al generar PDF');
 
-    const blob   = await res.blob();
+    const blob = res.data;
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement('a');
     const placa  = (cot.placa || cot.vehiculo?.placa || 'SIN-PLACA').replace(/[^a-zA-Z0-9]/g, '-');
