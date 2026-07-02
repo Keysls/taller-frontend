@@ -114,7 +114,8 @@ function NavItem({ to, label, Icon, exact, colapsado, esMovil, onCerrar }) {
 
 export default function Sidebar({ colapsado, esMovil, abierto, onCerrar }) {
   const { user } = useAuthStore();
-  const esAdmin  = user?.rol?.nombre === 'ADMINISTRADOR';
+  const esAdmin    = user?.rol?.nombre === 'ADMINISTRADOR';
+  const esMecanico = user?.rol?.nombre === 'MECANICO';
 
   const section = (label, items) => (
     <>
@@ -177,12 +178,20 @@ export default function Sidebar({ colapsado, esMovil, abierto, onCerrar }) {
       </div>
 
         <nav style={S.nav}>
-          {section('Operaciones', NAV_OPERACIONES)}
-          {section('Clientes',    NAV_CLIENTES)}
-          {section('Personal',    NAV_PERSONAL)}
-          {section('Inventario',  NAV_INVENTARIO)}
-          {section('Finanzas',    NAV_FINANZAS)}
-          {esAdmin && section('Administración', NAV_ADMIN)}
+          {esMecanico ? (
+            section('Operaciones', [
+              { to: '/ordenes', label: 'Órdenes de trabajo', icon: ClipboardList },
+            ])
+          ) : (
+            <>
+              {section('Operaciones', NAV_OPERACIONES)}
+              {section('Clientes',    NAV_CLIENTES)}
+              {section('Personal',    NAV_PERSONAL)}
+              {section('Inventario',  NAV_INVENTARIO)}
+              {section('Finanzas',    NAV_FINANZAS)}
+              {esAdmin && section('Administración', NAV_ADMIN)}
+            </>
+          )}
         </nav>
 
         {!colapsado && (

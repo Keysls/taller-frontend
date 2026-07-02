@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '../../store/authStore.js';
 import {
   Plus, Search, X, Loader2, ChevronLeft, ChevronRight,
   Eye, Printer, DollarSign, AlertTriangle, Wrench, Pencil, MessageCircle, Download,
@@ -9,6 +10,7 @@ import api from '../../services/api.js';
 import NuevaCotizacionModal from '../../components/ui/NuevaCotizacionModal.jsx';
 import { ModalPago } from '../pagos/Pagos.jsx';
 
+
 const ordApi = {
   getAll:        ()           => api.get('/ordenes').then(r => r.data.data || []),
   getById:       (id)         => api.get(`/ordenes/${id}`).then(r => r.data.data),
@@ -16,7 +18,11 @@ const ordApi = {
   update:        (id, data)   => api.patch(`/ordenes/${id}`, data).then(r => r.data.data),
 };
 
-const fmt  = n => new Intl.NumberFormat('es-PE', { style:'currency', currency:'PEN' }).format(n??0);
+// Maneja tanto números como el string 'Oculto' que devuelve el backend para mecánicos
+const fmt = n =>
+  n === 'Oculto'
+    ? 'S/ *****'
+    : new Intl.NumberFormat('es-PE', { style:'currency', currency:'PEN' }).format(n ?? 0);
 const fmtD = d => d ? new Date(d).toLocaleDateString('es-PE', { day:'2-digit', month:'2-digit', year:'2-digit' }) : '—';
 
 const PER_PAGE = 20;
@@ -67,6 +73,7 @@ const CSS_RESPONSIVE = `
 `;
 
 // ─── imprimirOrden ────────────────────────────────────────────────
+// Solo accesible para roles que no son MECANICO (el backend también bloquea el PDF)
 function imprimirOrden(ot) {
   const fmtS     = n => `S/ ${Number(n||0).toFixed(2)}`;
   const fmtFecha = d => d ? new Date(d).toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '—';
@@ -102,7 +109,6 @@ function imprimirOrden(ot) {
 // ─── Descargar PDF directo desde backend ─────────────────────────
 async function descargarOrden(ot) {
   try {
-    // Leer token del storage de Zustand persist (clave: 'taller-auth')
     const stored = JSON.parse(localStorage.getItem('taller-auth') || '{}');
     const token  = stored?.state?.token;
 
@@ -134,7 +140,7 @@ function abrirWhatsapp(ot) {
   if (!num) { alert('No hay número de teléfono registrado para este cliente.'); return; }
   const numeroConCodigo = num.startsWith('51') ? num : `51${num}`;
   const nombre = ot?.facturarA || `${ot?.vehiculo?.cliente?.nombres||''} ${ot?.vehiculo?.cliente?.apellidos||''}`.trim() || 'cliente';
-  const msg = encodeURIComponent(`Hola ${nombre}, le informamos sobre su Orden de Trabajo ${ot?.numeroOrden}. Placa: ${ot?.placa || ot?.vehiculo?.placa || '—'}. Total: S/ ${Number(ot?.totalGeneral||0).toFixed(2)}. Cualquier consulta estamos a su disposición.`);
+  const msg = encodeURIComponent(`Hola ${nombre}, le informamos sobre su Orden de Trabajo ${ot?.numeroOrden}. Placa: ${ot?.placa || ot?.vehiculo?.placa || '—'}. Cualquier consulta estamos a su disposición.`);
   window.open(`https://wa.me/${numeroConCodigo}?text=${msg}`, '_blank');
 }
 
@@ -164,6 +170,9 @@ function NotasBlock({ ot }) {
 // ─── Panel lateral ────────────────────────────────────────────────
 function PanelOT({ id, onClose, onModificar }) {
   const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const esMecanico = user?.rol?.nombre === 'MECANICO';
+
   const [estadoEdit, setEstadoEdit] = useState(false);
   const [cotizacionOpen, setCotizacionOpen] = useState(true);
   const [showPago, setShowPago] = useState(false);
@@ -197,8 +206,11 @@ function PanelOT({ id, onClose, onModificar }) {
   const estCfg = ESTADO_CFG[ot?.estado] || ESTADO_CFG.PENDIENTE;
   const serviciosItems = ot?.servicios || [];
   const repuestosItems = ot?.repuestos || [];
-  const totalPagado = ot?.pagos?.reduce((s,p)=>s+Number(p.monto),0) || 0;
-  const saldo = Number(ot?.totalGeneral||0) - totalPagado;
+
+  // Si el backend devolvió 'Oculto', no calculamos montos para evitar NaN
+  const esOculto    = ot?.totalGeneral === 'Oculto';
+  const totalPagado = esOculto ? null : (ot?.pagos?.reduce((s,p) => s + Number(p.monto), 0) || 0);
+  const saldo       = esOculto ? null : Number(ot?.totalGeneral || 0) - totalPagado;
 
   const InfoRow = ({label, value, bold}) => (
     <div style={{ display:'flex', justifyContent:'space-between', padding:'6px 0', borderBottom:'1px solid #F1F5F9', fontSize:13 }}>
@@ -229,7 +241,8 @@ function PanelOT({ id, onClose, onModificar }) {
           {/* Estado */}
           <div style={{ background:'#fff', margin:'12px 14px', borderRadius:14, border:'1px solid #E2ECF4', padding:'12px 16px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>Estado de la orden</div>
-            {estadoEdit ? (
+            {/* El mecánico NO puede cambiar el estado, solo verlo */}
+            {!esMecanico && estadoEdit ? (
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                 {Object.entries(ESTADO_CFG).map(([k,v]) => (
                   <button key={k} onClick={()=>handleEstado(k)}
@@ -242,7 +255,9 @@ function PanelOT({ id, onClose, onModificar }) {
             ) : (
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <span style={{ ...estCfg, padding:'4px 14px', borderRadius:20, fontWeight:700, fontSize:12 }}>{estCfg.label}</span>
-                <button onClick={()=>setEstadoEdit(true)} style={{ fontSize:12, color:'#2563EB', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>Cambiar →</button>
+                {!esMecanico && (
+                  <button onClick={()=>setEstadoEdit(true)} style={{ fontSize:12, color:'#2563EB', background:'none', border:'none', cursor:'pointer', fontWeight:600 }}>Cambiar →</button>
+                )}
               </div>
             )}
           </div>
@@ -286,10 +301,11 @@ function PanelOT({ id, onClose, onModificar }) {
                       return (
                         <div key={i} style={{ display:'flex', justifyContent:'space-between', padding:'5px 0', fontSize:13, borderBottom:'1px solid #F8FAFC' }}>
                           <span style={{ color: esTercero ? '#7C3AED' : '#1E293B' }}>
-                            {s.servicio?.nombre||s.descripcion}
+                            {s.descripcion || s.servicio?.nombre}
                             {esTercero && <span style={{ fontSize:10, color:'#7C3AED', background:'#F5F3FF', padding:'1px 6px', borderRadius:4, marginLeft:6 }}>externo</span>}
                           </span>
-                          <span style={{ fontWeight:600 }}>{fmt(s.precio)}</span>
+                          {/* fmt() devuelve 'Oculto' si el backend lo censuró */}
+                          <span style={{ fontWeight:600, color: s.precio === 'Oculto' ? '#94A3B8' : 'inherit' }}>{fmt(s.precio)}</span>
                         </div>
                       );
                     })}
@@ -300,16 +316,17 @@ function PanelOT({ id, onClose, onModificar }) {
                     <div style={{ fontSize:12, fontWeight:700, color:'#B45309', marginBottom:8 }}>Repuestos</div>
                     {repuestosItems.map((r,i) => (
                       <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 0', fontSize:13, borderBottom:'1px solid #F8FAFC' }}>
-                        <span>{r.repuesto?.nombre||r.descripcion}</span>
+                        <span>{r.descripcion || r.repuesto?.nombre}</span>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                           {r.cantidad > 1 && <span style={{ fontSize:11, color:'#94A3B8' }}>{r.cantidad}x</span>}
-                          <span style={{ fontWeight:600 }}>{fmt(r.subtotal)}</span>
+                          <span style={{ fontWeight:600, color: r.subtotal === 'Oculto' ? '#94A3B8' : 'inherit' }}>{fmt(r.subtotal)}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-                {ot?.pagos?.length > 0 && (
+                {/* Pagos y saldo solo visibles para roles con acceso a precios */}
+                {!esMecanico && ot?.pagos?.length > 0 && (
                   <div style={{ marginTop:14 }}>
                     <div style={{ fontSize:12, fontWeight:700, color:'#15803D', marginBottom:8 }}>Pagos</div>
                     {ot.pagos.map((p,i) => (
@@ -320,7 +337,7 @@ function PanelOT({ id, onClose, onModificar }) {
                     ))}
                   </div>
                 )}
-                {saldo > 0 && (
+                {!esMecanico && saldo > 0 && (
                   <div style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', marginTop:8, borderTop:'1px solid #F1F5F9', fontSize:13, color:'#DC2626' }}>
                     <span>Saldo pendiente</span>
                     <span style={{ fontWeight:600 }}>- {fmt(saldo)}</span>
@@ -336,55 +353,61 @@ function PanelOT({ id, onClose, onModificar }) {
           <div style={{ padding:'14px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #F1F5F9' }}>
             <span style={{ fontSize:18, fontWeight:800, color:'#0D1B2A' }}>TOTAL</span>
             <div style={{ textAlign:'right' }}>
-              <div style={{ fontSize:20, fontWeight:900, color:'#0D1B2A' }}>{fmt(ot?.totalGeneral)}</div>
-              {saldo > 0 && <div style={{ fontSize:11, color:'#DC2626', fontWeight:600 }}>Saldo: {fmt(saldo)}</div>}
-              {saldo <= 0 && totalPagado > 0 && <div style={{ fontSize:11, color:'#15803D', fontWeight:600 }}>✓ Pagado</div>}
+              {/* Muestra 'Oculto' en gris si el backend censuró el valor */}
+              <div style={{ fontSize:20, fontWeight:900, color: esOculto ? '#94A3B8' : '#0D1B2A' }}>
+                {esOculto ? 'S/ *****' : fmt(ot?.totalGeneral)}
+              </div>
+              {!esMecanico && saldo > 0 && <div style={{ fontSize:11, color:'#DC2626', fontWeight:600 }}>Saldo: {fmt(saldo)}</div>}
+              {!esMecanico && saldo <= 0 && totalPagado > 0 && <div style={{ fontSize:11, color:'#15803D', fontWeight:600 }}>✓ Pagado</div>}
             </div>
           </div>
-          <div style={{ padding:'12px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={()=>imprimirOrden(ot)}
-                style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}
-                onMouseEnter={e=>e.currentTarget.style.background='#F1F5F9'}
-                onMouseLeave={e=>e.currentTarget.style.background='#fff'}
-                title="Imprimir OT">
-                <Printer size={16}/>
-              </button>
-              <button onClick={handleDescargar} disabled={descargando}
-                style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:descargando?'wait':'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563EB', opacity:descargando?.6:1 }}
-                onMouseEnter={e=>{ if(!descargando) e.currentTarget.style.background='#EFF6FF'; }}
-                onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
-                title="Descargar PDF">
-                {descargando
-                  ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/>
-                  : <Download size={16}/>
-                }
-              </button>
-              <button onClick={()=>abrirWhatsapp(ot)}
-                style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#25D366' }}
-                onMouseEnter={e=>{ e.currentTarget.style.background='#F0FDF4'; e.currentTarget.style.borderColor='#86EFAC'; }}
-                onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; e.currentTarget.style.borderColor='#E2ECF4'; }}
-                title="WhatsApp">
-                <MessageCircle size={16}/>
-              </button>
-            </div>
-            <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-              {saldo > 0 && (
-                <button onClick={()=>setShowPago(true)}
-                  style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 16px', borderRadius:10, border:'none', background:'#15803D', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='#166534'}
-                  onMouseLeave={e=>e.currentTarget.style.background='#15803D'}>
-                  <Plus size={14}/> Pago
+          {/* Botones de acción: solo para roles que no son MECANICO */}
+          {!esMecanico && (
+            <div style={{ padding:'12px 20px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={()=>imprimirOrden(ot)}
+                  style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#F1F5F9'}
+                  onMouseLeave={e=>e.currentTarget.style.background='#fff'}
+                  title="Imprimir OT">
+                  <Printer size={16}/>
                 </button>
-              )}
-              <button onClick={()=>onModificar(ot)}
-                style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'10px 22px', borderRadius:10, border:'none', background:'#2563EB', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff' }}
-                onMouseEnter={e=>e.currentTarget.style.background='#1D4ED8'}
-                onMouseLeave={e=>e.currentTarget.style.background='#2563EB'}>
-                <Pencil size={15}/> Modificar
-              </button>
+                <button onClick={handleDescargar} disabled={descargando}
+                  style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:descargando?'wait':'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#2563EB', opacity:descargando?.6:1 }}
+                  onMouseEnter={e=>{ if(!descargando) e.currentTarget.style.background='#EFF6FF'; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
+                  title="Descargar PDF">
+                  {descargando
+                    ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/>
+                    : <Download size={16}/>
+                  }
+                </button>
+                <button onClick={()=>abrirWhatsapp(ot)}
+                  style={{ width:36, height:36, borderRadius:10, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#25D366' }}
+                  onMouseEnter={e=>{ e.currentTarget.style.background='#F0FDF4'; e.currentTarget.style.borderColor='#86EFAC'; }}
+                  onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; e.currentTarget.style.borderColor='#E2ECF4'; }}
+                  title="WhatsApp">
+                  <MessageCircle size={16}/>
+                </button>
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                {saldo > 0 && (
+                  <button onClick={()=>setShowPago(true)}
+                    style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 16px', borderRadius:10, border:'none', background:'#15803D', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#166534'}
+                    onMouseLeave={e=>e.currentTarget.style.background='#15803D'}>
+                    <Plus size={14}/> Pago
+                  </button>
+                )}
+                <button onClick={()=>onModificar(ot)}
+                  style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'10px 22px', borderRadius:10, border:'none', background:'#2563EB', cursor:'pointer', fontSize:13, fontWeight:700, color:'#fff' }}
+                  onMouseEnter={e=>e.currentTarget.style.background='#1D4ED8'}
+                  onMouseLeave={e=>e.currentTarget.style.background='#2563EB'}>
+                  <Pencil size={15}/> Modificar
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -488,11 +511,15 @@ function ModalEditarOT({ ot, onClose, onSaved }) {
 
 // ─── Card individual de OT (móvil) ───────────────────────────────
 function OTCard({ o, onClick }) {
+  const { user } = useAuthStore();
+  const esMecanico = user?.rol?.nombre === 'MECANICO';
+
   const est = ESTADO_CFG[o.estado] || ESTADO_CFG.PENDIENTE;
-  const total = Number(o.totalGeneral||0);
-  const totalPagado = o.pagos?.reduce((s, p) => s + Number(p.monto), 0) || 0;
-  const saldoCalc = total - totalPagado;
-  const cliente = o.facturarA || `${o.vehiculo?.cliente?.nombres||''} ${o.vehiculo?.cliente?.apellidos||''}`.trim() || '—';
+  const esOculto    = o.totalGeneral === 'Oculto';
+  const total       = esOculto ? null : Number(o.totalGeneral || 0);
+  const totalPagado = esOculto ? null : (o.pagos?.reduce((s, p) => s + Number(p.monto), 0) || 0);
+  const saldoCalc   = esOculto ? null : total - totalPagado;
+  const cliente     = o.facturarA || `${o.vehiculo?.cliente?.nombres||''} ${o.vehiculo?.cliente?.apellidos||''}`.trim() || '—';
 
   return (
     <div className="ot-card" onClick={onClick}>
@@ -528,14 +555,17 @@ function OTCard({ o, onClick }) {
 
       <div className="ot-card-bot">
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <DollarSign size={14} color={saldoCalc <= 0 ? '#22c55e' : '#CBD5E1'}/>
+          {/* Icono de dólar: verde si pagado, gris si oculto o con saldo */}
+          <DollarSign size={14} color={esOculto ? '#CBD5E1' : (saldoCalc <= 0 ? '#22c55e' : '#CBD5E1')}/>
           <AlertTriangle size={14} color={o.prioridad === 'URGENTE' ? '#ef4444' : '#CBD5E1'}/>
           <Wrench size={14} color="#CBD5E1"/>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <div style={{ textAlign:'right' }}>
             <div style={{ fontSize:11, color:'#94A3B8' }}>Total</div>
-            <div style={{ fontSize:15, fontWeight:800, color:'#0D1B2A' }}>{fmt(total)}</div>
+            <div style={{ fontSize:15, fontWeight:800, color: esOculto ? '#94A3B8' : '#0D1B2A' }}>
+              {esOculto ? 'S/ *****' : fmt(total)}
+            </div>
           </div>
           <button onClick={e=>{ e.stopPropagation(); onClick(); }}
             style={{ width:34, height:34, borderRadius:8, border:'1px solid #E2ECF4', background:'#EFF6FF', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'#2563EB' }}>
@@ -550,6 +580,9 @@ function OTCard({ o, onClick }) {
 // ─── Página OrdenesTrabajo ────────────────────────────────────────
 export default function OrdenesTrabajo() {
   const qc = useQueryClient();
+  const { user } = useAuthStore();
+  const esMecanico = user?.rol?.nombre === 'MECANICO';
+
   const [panelId,     setPanelId]    = useState(null);
   const [editOT,      setEditOT]     = useState(null);
   const [otModificar, setOtModificar] = useState(null);
@@ -596,12 +629,15 @@ export default function OrdenesTrabajo() {
         <div>
           <p style={{ fontSize:12, color:'#94A3B8', marginTop:2 }}>{filtradas.length} de {ordenes.length} órdenes</p>
         </div>
-        <button onClick={()=>setShowNueva(true)}
-          style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, border:'none', cursor:'pointer', background:'#2563EB', color:'#fff', fontSize:13, fontWeight:600 }}
-          onMouseEnter={e=>e.currentTarget.style.background='#1D4ED8'}
-          onMouseLeave={e=>e.currentTarget.style.background='#2563EB'}>
-          <Plus size={15}/> Nueva OT
-        </button>
+        {/* El mecánico no puede crear órdenes */}
+        {!esMecanico && (
+          <button onClick={()=>setShowNueva(true)}
+            style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, border:'none', cursor:'pointer', background:'#2563EB', color:'#fff', fontSize:13, fontWeight:600 }}
+            onMouseEnter={e=>e.currentTarget.style.background='#1D4ED8'}
+            onMouseLeave={e=>e.currentTarget.style.background='#2563EB'}>
+            <Plus size={15}/> Nueva OT
+          </button>
+        )}
       </div>
 
       <div className="ot-kpis">
@@ -651,16 +687,16 @@ export default function OrdenesTrabajo() {
                 <thead>
                   <tr style={{ background:'#F8FAFC', borderBottom:'1px solid #F1F5F9' }}>
                     {[
-                      { label:'N° Orden', hide:false },
-                      { label:'DNI',      hide:true  },
-                      { label:'Cliente',  hide:false },
-                      { label:'Placa',    hide:false },
-                      { label:'Técnico',  hide:true  },
-                      { label:'Apertura', hide:true  },
-                      { label:'Tipo Orden',hide:true },
-                      { label:'Estado',   hide:false },
-                      { label:'iconos',   hide:true  },
-                      { label:'acciones', hide:false },
+                      { label:'N° Orden',  hide:false },
+                      { label:'DNI',       hide:true  },
+                      { label:'Cliente',   hide:false },
+                      { label:'Placa',     hide:false },
+                      { label:'Técnico',   hide:true  },
+                      { label:'Apertura',  hide:true  },
+                      { label:'Tipo Orden',hide:true  },
+                      { label:'Estado',    hide:false },
+                      { label:'iconos',    hide:true  },
+                      { label:'acciones',  hide:false },
                     ].map(h => (
                       <th key={h.label} className={h.hide ? 'ot-col-hide-sm' : ''} style={{ padding:'10px 12px', textAlign:'left', fontSize:10, fontWeight:700, color:'#94A3B8', textTransform:'uppercase', letterSpacing:'.05em', whiteSpace:'nowrap' }}>{h.label}</th>
                     ))}
@@ -668,11 +704,12 @@ export default function OrdenesTrabajo() {
                 </thead>
                 <tbody>
                   {paginated.map(o => {
-                    const est = ESTADO_CFG[o.estado] || ESTADO_CFG.PENDIENTE;
-                    const total = Number(o.totalGeneral||0);
-                    const puntoColor = total < 2500 ? '#22c55e' : total < 5000 ? '#f59e0b' : '#ef4444';
-                    const totalPagado = o.pagos?.reduce((s, p) => s + Number(p.monto), 0) || 0;
-                    const saldoCalc = total - totalPagado;
+                    const est         = ESTADO_CFG[o.estado] || ESTADO_CFG.PENDIENTE;
+                    const esOculto    = o.totalGeneral === 'Oculto';
+                    const total       = esOculto ? null : Number(o.totalGeneral || 0);
+                    const puntoColor  = esOculto ? '#CBD5E1' : (total < 2500 ? '#22c55e' : total < 5000 ? '#f59e0b' : '#ef4444');
+                    const totalPagado = esOculto ? null : (o.pagos?.reduce((s, p) => s + Number(p.monto), 0) || 0);
+                    const saldoCalc   = esOculto ? null : total - totalPagado;
                     return (
                       <tr key={o.id} style={{ borderBottom:'1px solid #F8FAFC', cursor:'pointer' }}
                         onMouseEnter={e=>e.currentTarget.style.background='#FAFBFF'}
@@ -696,14 +733,15 @@ export default function OrdenesTrabajo() {
                         </td>
                         <td className="ot-col-hide-sm" style={{ padding:'10px 8px' }}>
                           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                            <DollarSign size={14} color={saldoCalc <= 0 ? '#22c55e' : '#CBD5E1'}/>
+                            {/* Icono dólar: verde si pagado, gris si oculto o con saldo pendiente */}
+                            <DollarSign size={14} color={esOculto ? '#CBD5E1' : (saldoCalc <= 0 ? '#22c55e' : '#CBD5E1')}/>
                             <AlertTriangle size={14} color={o.prioridad === 'URGENTE' ? '#ef4444' : '#CBD5E1'}/>
                             <Wrench size={14} color="#CBD5E1"/>
                           </div>
                         </td>
                         <td style={{ padding:'10px 12px' }}>
                           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                            <div style={{ width:10, height:10, borderRadius:'50%', background:puntoColor, flexShrink:0 }} title={fmt(total)}/>
+                            <div style={{ width:10, height:10, borderRadius:'50%', background:puntoColor, flexShrink:0 }} title={esOculto ? 'Oculto' : fmt(total)}/>
                             <button onClick={e=>{ e.stopPropagation(); setPanelId(o.id); }}
                               style={{ width:30, height:30, borderRadius:8, border:'1px solid #E2ECF4', background:'#fff', cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center', color:'#64748B' }}
                               onMouseEnter={e=>{ e.currentTarget.style.background='#EFF6FF'; e.currentTarget.style.color='#2563EB'; e.currentTarget.style.borderColor='#BFDBFE'; }}
@@ -766,10 +804,11 @@ export default function OrdenesTrabajo() {
         <PanelOT id={panelId} onClose={()=>setPanelId(null)} onModificar={(ot)=>{ setPanelId(null); setOtModificar(ot); }}/>
       )}
       {editOT && <ModalEditarOT ot={editOT} onClose={()=>setEditOT(null)} onSaved={()=>setEditOT(null)}/>}
-      {showNueva && (
+      {/* Modales de crear/modificar: bloqueados para mecánicos */}
+      {!esMecanico && showNueva && (
         <NuevaCotizacionModal onClose={()=>setShowNueva(false)} onSaved={()=>{ qc.invalidateQueries(['ordenes']); setShowNueva(false); }}/>
       )}
-      {otModificar && (
+      {!esMecanico && otModificar && (
         <NuevaCotizacionModal
           initialData={{
             clienteId:    otModificar.clienteId    || null,

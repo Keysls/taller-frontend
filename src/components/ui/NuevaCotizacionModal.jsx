@@ -342,6 +342,12 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
   // ← NUEVO: editar precio de repuesto
   const setRepPrecio = (idx, val) => setRepItems(p => p.map((x, i) => i === idx ? { ...x, precio: Number(val) || 0 } : x));
 
+  // Editar nombre de servicio
+const setSvcNombre = (idx, val) => setSvcItems(p => p.map((x, i) => i === idx ? { ...x, nombre: val } : x));
+
+// Editar nombre de repuesto
+const setRepNombre = (idx, val) => setRepItems(p => p.map((x, i) => i === idx ? { ...x, nombre: val } : x));
+
   const goTo2 = () => {
     if (!form.clienteId && !form.facturarA) { toast.error('Ingresa el propietario'); return; }
     if (!form.placa) { toast.error('Ingresa la placa'); return; }
@@ -586,21 +592,27 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                   <div style={{ fontSize:14, fontWeight:700, color:'#1e293b', marginBottom:8 }}>Servicio</div>
 
                   {/* Header columnas */}
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 50px 90px 24px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', padding:'6px 8px', borderRadius:'6px 6px 0 0' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 90px 24px', background:'#f8fafc', borderBottom:'1px solid #e5e7eb', padding:'6px 8px', borderRadius:'6px 6px 0 0' }}>
                     <span style={{ fontSize:11, fontWeight:600, color:'#64748b' }}>Nombre</span>
-                    <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textAlign:'center' }}>Cant.</span>
                     <span style={{ fontSize:11, fontWeight:600, color:'#64748b', textAlign:'right' }}>Precio (S/)</span>
                     <span></span>
                   </div>
 
                   <div style={{ minHeight:180 }}>
                     {svcItems.map((item, i) => (
-                      <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 50px 90px 24px', alignItems:'center', padding:'5px 8px', borderBottom:'1px solid #f8fafc', fontSize:13, gap:4 }}>
-                        <span style={{ color: item.tipo==='tercero'?'#7c3aed':'#1d4ed8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                          {item.tipo!=='tercero' && <span style={{ color:'#94a3b8' }}>— </span>}
-                          {item.nombre}
-                        </span>
-                        <span style={{ textAlign:'center', color:'#64748b', fontSize:12 }}>1</span>
+                      <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 90px 24px', alignItems:'center', padding:'5px 8px', borderBottom:'1px solid #f8fafc', fontSize:13, gap:4 }}>
+                      <input
+                        type="text"
+                        value={item.nombre}
+                        onChange={e => setSvcNombre(i, e.target.value)}
+                        className="cot-input"
+                        style={{
+                          padding:'3px 6px', fontSize:12,
+                          color: item.tipo==='tercero' ? '#7c3aed' : '#1d4ed8',
+                          fontWeight:500,
+                        }}
+                      />
+                        
                         {/* ← Precio editable */}
                         <input
                           type="number" min="0" step="0.01"
@@ -645,7 +657,15 @@ export default function NuevaCotizacionModal({ onClose, onSaved, initialData = n
                       <tbody>
                         {repItems.map((item, i) => (
                           <tr key={i} style={{ borderBottom:'1px solid #f8fafc' }}>
-                            <td style={{ padding:'6px 8px', fontSize:13 }}>{item.nombre}</td>
+                              <td style={{ padding:'6px 8px' }}>
+                                <input
+                                  type="text"
+                                  value={item.nombre}
+                                  onChange={e => setRepNombre(i, e.target.value)}
+                                  className="cot-input"
+                                  style={{ padding:'3px 6px', fontSize:12, fontWeight:500 }}
+                                />
+                              </td>
                             <td style={{ padding:'6px 8px', textAlign:'center' }}>
                               <input className="cot-input" style={{ width:48, textAlign:'center', padding:'3px 4px' }} type="number" min="1" value={item.cantidad} onChange={e=>setCant(i,e.target.value)}/>
                             </td>
