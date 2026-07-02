@@ -109,15 +109,11 @@ function imprimirOrden(ot) {
 // ─── Descargar PDF directo desde backend ─────────────────────────
 async function descargarOrden(ot) {
   try {
-    const stored = JSON.parse(localStorage.getItem('taller-auth') || '{}');
-    const token  = stored?.state?.token;
-
-    const res = await fetch(`/api/ordenes/${ot.id}/pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const res = await api.get(`/ordenes/${ot.id}/pdf`, {
+      responseType: 'blob',
     });
-    if (!res.ok) throw new Error('Error al generar PDF');
 
-    const blob   = await res.blob();
+    const blob = res.data;
     const url    = URL.createObjectURL(blob);
     const a      = document.createElement('a');
     const placa  = (ot.placa || ot.vehiculo?.placa || 'SIN-PLACA').replace(/[^a-zA-Z0-9]/g, '-');
